@@ -1,0 +1,36 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+
+box client
+participant client as client
+end box
+
+box delayQueue
+participant timeWheel as timeWheel
+participant redis as redis
+participant kafka as kafka
+end box
+
+autonumber
+client -> timeWheel++: set delay event
+alt lua script
+timeWheel -> redis++: add task in redis
+redis -> redis: delete deleted task in delete set
+redis -> redis: add task in zset
+end alt
+redis --> timeWheel--: return
+timeWheel --> client--: return
+
+timeWheel -> redis++: Poll the tasks that can be performed in each time pane
+alt lua script
+redis -> redis: get executable tasks in zset
+redis -> redis: Filter expired tasks
+end alt
+redis --> timeWheel--: return executable tasks
+timeWheel -> kafka++: wrap event and send event to kafka
+kafka --> timeWheel--: return
+
+
+@enduml
