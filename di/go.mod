@@ -1,4 +1,4 @@
-module github.com/vagrant-Zero/di
+module github.com/vagrant-Zero/widgets/di
 
 go 1.21
 

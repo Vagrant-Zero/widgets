@@ -59,10 +59,6 @@ func (d *DefaultContainer) Register(name string, impl interface{}) {
 	if _, ok := d.interfaceMap[name]; ok {
 		panic("interface already registered: " + name)
 	}
-	//ty := reflect.TypeOf(impl)
-	//if ty.Kind() != reflect.Ptr {
-	//	panic(fmt.Sprintf("interface: %s must be a pointer, realType: %v", name, ty))
-	//}
 	if _, ok := d.typeMap[ty]; ok {
 		panic("interface already registered: " + ty.String())
 	}
