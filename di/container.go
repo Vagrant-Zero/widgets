@@ -3,11 +3,11 @@ Package di provides a simple dependency injection framework for Go.
 This package provide sdk for dependency injection in go.
 
 Sample:
-	package main
+package main
 
 import (
 	"fmt"
-	"github.com/vagrant-Zero/di/container.go"
+	"github.com/vagrant-Zero/widgets/di"
 )
 
 func main() {
@@ -15,15 +15,17 @@ func main() {
 	container := di.NewContainer()
 
 	// 2. register components
-	container.Register("db", &DB{})
 	container.Register("userService", &UserService{})
 
 	// 3. initialize all registered components
 	container.Initialize()
 
 	// 4. get components
-	userService := container.MustGet("userService").(*UserService)
-	fmt.Println(userService)
+	userService, err := container.MustGet("userService")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(userService.(*UserService))
 }
 */
 
@@ -49,6 +51,9 @@ func NewContainer() Container {
 }
 
 func (d *DefaultContainer) Register(name string, impl interface{}) {
+	if d.status != initStatus {
+		panic("container is not initStatus, can not register")
+	}
 	ty := reflect.TypeOf(impl)
 	if ty == nil || ty.Kind() != reflect.Ptr {
 		panic(fmt.Sprintf("interface: %s can not be nil or must be a pointer, realType: %v", name, ty))

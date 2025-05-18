@@ -46,6 +46,7 @@ func TestDefaultContainer_Register(t *testing.T) {
 		container := &DefaultContainer{
 			interfaceMap: make(map[string]interface{}),
 			typeMap:      make(map[reflect.Type]interface{}),
+			status:       initStatus,
 		}
 		testImpl := &testInterfaceImpl{}
 
@@ -59,6 +60,7 @@ func TestDefaultContainer_Register(t *testing.T) {
 		container := &DefaultContainer{
 			interfaceMap: make(map[string]interface{}),
 			typeMap:      make(map[reflect.Type]interface{}),
+			status:       initStatus,
 		}
 		testImpl := &testInterfaceImpl{}
 
@@ -72,6 +74,7 @@ func TestDefaultContainer_Register(t *testing.T) {
 		container := &DefaultContainer{
 			interfaceMap: make(map[string]interface{}),
 			typeMap:      make(map[reflect.Type]interface{}),
+			status:       initStatus,
 		}
 
 		assert.PanicsWithValue(t, "interface: test can not be nil or must be a pointer, realType: <nil>", func() {
@@ -83,6 +86,7 @@ func TestDefaultContainer_Register(t *testing.T) {
 		container := &DefaultContainer{
 			interfaceMap: make(map[string]interface{}),
 			typeMap:      make(map[reflect.Type]interface{}),
+			status:       initStatus,
 		}
 		testImpl := &testInterfaceImpl{}
 		container.Register("test", testImpl)
@@ -96,6 +100,7 @@ func TestDefaultContainer_Register(t *testing.T) {
 		container := &DefaultContainer{
 			interfaceMap: make(map[string]interface{}),
 			typeMap:      make(map[reflect.Type]interface{}),
+			status:       initStatus,
 		}
 		testImpl := testInterfaceImpl{}
 
@@ -108,6 +113,7 @@ func TestDefaultContainer_Register(t *testing.T) {
 		container := &DefaultContainer{
 			interfaceMap: make(map[string]interface{}),
 			typeMap:      make(map[reflect.Type]interface{}),
+			status:       initStatus,
 		}
 		testImpl := &testInterfaceImpl{}
 		container.typeMap[reflect.TypeOf(testImpl)] = testImpl
@@ -313,6 +319,7 @@ type School struct {
 
 func (s *School) AfterInject() error {
 	fmt.Printf("School AfterInject called, name: %s, age: %d\n", s.Teacher.Name, s.Teacher.Age)
+	s.TeacherCnt = 2
 	return nil
 }
 
@@ -344,8 +351,9 @@ func TestDefaultContainer_Initialize2(t *testing.T) {
 		s, err := container.MustGet("school")
 		assert.Nil(t, err)
 		assert.Equal(t, &School{
-			Teacher: &Person{Name: "Alice", Age: 20},
-			Student: &Person{},
+			Teacher:    &Person{Name: "Alice", Age: 20},
+			Student:    &Person{},
+			TeacherCnt: 2,
 		}, s)
 		container.Clear()
 	})
@@ -366,9 +374,11 @@ func TestDefaultContainer_Initialize2(t *testing.T) {
 		s, err := container.MustGet("school")
 		assert.Nil(t, err)
 		assert.Equal(t, &School{
-			Teacher: &Person{Name: "Alice", Age: 20},
-			Student: &Person{},
+			Teacher:    &Person{Name: "Alice", Age: 20},
+			Student:    &Person{},
+			TeacherCnt: 2,
 		}, s)
+		assert.Equal(t, int32(2), s.(*School).TeacherCnt)
 		container.Clear()
 	})
 
