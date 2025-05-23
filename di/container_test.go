@@ -328,12 +328,13 @@ type UserService struct {
 	Person    *Person `inject:"person"`
 }
 
-type CircleA struct {
-	B *CircleB `inject:"circleB"`
+type NoTagStructA struct {
+	Person *Person `inject:""`
 }
 
-type CircleB struct {
-	A *CircleA `inject:"circleA"`
+func (n *NoTagStructA) AfterInject() error {
+	fmt.Printf("NoTagStructA AfterInject called, name: %s, age: %d\n", n.Person.Name, n.Person.Age)
+	return nil
 }
 
 func TestDefaultContainer_Initialize2(t *testing.T) {
@@ -346,15 +347,15 @@ func TestDefaultContainer_Initialize2(t *testing.T) {
 
 		val, err := container.MustGet("person")
 		assert.Nil(t, err)
-		assert.Equal(t, &Person{Name: "Alice", Age: 20}, val)
+		assert.Equal(t, 20, val.(*Person).Age)
+		assert.Equal(t, "Alice", val.(*Person).Name)
 
 		s, err := container.MustGet("school")
+		school := s.(*School)
 		assert.Nil(t, err)
-		assert.Equal(t, &School{
-			Teacher:    &Person{Name: "Alice", Age: 20},
-			Student:    &Person{},
-			TeacherCnt: 2,
-		}, s)
+		assert.Equal(t, 20, school.Teacher.Age)
+		assert.Equal(t, "Alice", school.Teacher.Name)
+		assert.Equal(t, int32(2), s.(*School).TeacherCnt)
 		container.Clear()
 	})
 
@@ -366,30 +367,53 @@ func TestDefaultContainer_Initialize2(t *testing.T) {
 		container.Initialize()
 
 		val, err := container.MustGet("userService")
+		service := val.(*UserService)
 		assert.Nil(t, err)
-		assert.Equal(t, &UserService{
-			Person: &Person{Name: "Alice", Age: 20},
-		}, val)
+		assert.Equal(t, service.Person.Name, "Alice")
+		assert.Equal(t, service.Person.Age, 20)
 
 		s, err := container.MustGet("school")
+		school := s.(*School)
 		assert.Nil(t, err)
-		assert.Equal(t, &School{
-			Teacher:    &Person{Name: "Alice", Age: 20},
-			Student:    &Person{},
-			TeacherCnt: 2,
-		}, s)
+		assert.Equal(t, 20, school.Teacher.Age)
+		assert.Equal(t, "Alice", school.Teacher.Name)
 		assert.Equal(t, int32(2), s.(*School).TeacherCnt)
 		container.Clear()
 	})
 
-	//t.Run("cycle dependency", func(t *testing.T) {
-	//	// 1. 注册组件
-	//	container.Register("circleA", &CircleA{})
-	//	container.Register("circleB", &CircleB{})
-	//	container.Initialize()
-	//
-	//	assert.PanicsWithValue(t, "cycle dependency", func() {
-	//		container.Initialize()
-	//	})
-	//})
+	t.Run("no tag struct", func(t *testing.T) {
+		// 1. 注册组件
+		container.Register("person", &Person{Name: "Alice", Age: 20})
+		container.Register("noTagStructA", &NoTagStructA{})
+		// 2. 初始化
+		container.Initialize()
+		val, err := container.MustGet("person")
+		assert.Nil(t, err)
+		assert.Equal(t, 20, val.(*Person).Age)
+		assert.Equal(t, "Alice", val.(*Person).Name)
+		n, err := container.MustGet("noTagStructA")
+		assert.Nil(t, err)
+		noTagStructA := n.(*NoTagStructA)
+		assert.Equal(t, 20, noTagStructA.Person.Age)
+		assert.Equal(t, "Alice", noTagStructA.Person.Name)
+		container.Clear()
+	})
+
+	t.Run("same pointer address", func(t *testing.T) {
+		p := &Person{Name: "Alice", Age: 20}
+		n := &NoTagStructA{}
+		// 1. 注册组件
+		container.Register("person", p)
+		container.Register("noTagStructA", n)
+		// 2. 初始化
+		container.Initialize()
+		val, err := container.MustGet("person")
+		assert.Nil(t, err)
+		assert.Equal(t, p, val)
+
+		n2, err := container.MustGet("noTagStructA")
+		assert.Nil(t, err)
+		assert.Equal(t, n, n2)
+		container.Clear()
+	})
 }

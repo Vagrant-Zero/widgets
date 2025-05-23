@@ -43,6 +43,10 @@ type UserService struct {
 	Person    *Person `inject:"person"`
 }
 
+type NoTagService struct {
+	Person *Person `inject:""` // no tag, will use the field's type inject
+}
+
 func main() {
 	// 1. create a container
 	container := di.NewContainer()
@@ -51,6 +55,7 @@ func main() {
 	container.Register("person", &Person{Name: "Alice", Age: 20})
 	container.Register("school", &School{})
 	container.Register("userService", &UserService{})
+	container.Register("noTagService", &NoTagService{})
 
 	// 3. initialize all registered components
 	container.Initialize()
