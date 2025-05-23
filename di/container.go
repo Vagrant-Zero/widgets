@@ -111,7 +111,6 @@ func (d *DefaultContainer) Initialize() {
 		if err != nil {
 			panic(err)
 		}
-
 	}
 
 	// 3. 修改状态为已初始化
@@ -151,15 +150,8 @@ func (d *DefaultContainer) processInterface(v interface{},
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
 		// 1.1 如果依赖有inject tag（inject tag即interface的name），则递归注入（不支持循环依赖）， 完成后，从registeredMap中获取该值，然后赋值给字段
-		tag := field.Tag.Get(injectTag)
-		if tag == "" {
-			// 1.2 如果依赖没有inject tag，并且该值是指针类型，且是exported（即首字母大写），则注入该值的零值（如果是指针对象，创建空的指针对象，而不是nil），然后赋值给字段
-			if field.Type.Kind() == reflect.Ptr {
-				if field.Type.Elem().Kind() == reflect.Struct {
-					// 如果是struct类型，创建一个空的struct对象，然后赋值给字段
-					reflect.ValueOf(v).Elem().Field(i).Set(reflect.New(field.Type.Elem()))
-				}
-			}
+		tag, ok := field.Tag.Lookup(injectTag)
+		if !ok {
 			continue
 		}
 		if field.Type.Kind() != reflect.Ptr {
@@ -168,7 +160,18 @@ func (d *DefaultContainer) processInterface(v interface{},
 		if !field.IsExported() {
 			return fmt.Errorf("interface: %s is not exported", field.Type.String())
 		}
-		// 1.3 如果依赖有inject tag，则递归注入（不支持循环依赖）， 完成后，从registeredMap中获取该值，然后赋值给字段
+		if tag == "" {
+			// 1.2 如果依赖有inject tag，但是tag是空字符串，并且该值是指针类型，且是exported（即首字母大写），则按类型注入
+			if _, ok := d.typeMap[field.Type]; !ok {
+				return fmt.Errorf("interface with tag not registered: %s", field.Type.String())
+			}
+			if r, ok := registeredMap[field.Type]; ok {
+				reflect.ValueOf(v).Elem().Field(i).Set(reflect.ValueOf(r))
+				continue
+			}
+			return d.processInterface(field, registeredMap, registeredForInterfaceSet)
+		}
+		// 1.3 如果依赖有inject tag 已经注入过，直接赋值给字段
 		childField, ok := d.interfaceMap[tag]
 		if !ok {
 			return fmt.Errorf("interface with tag not registered: %s", tag)
