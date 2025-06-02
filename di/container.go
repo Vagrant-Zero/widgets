@@ -127,7 +127,7 @@ func (d *DefaultContainer) processInterface(v interface{},
 	registeredMap map[reflect.Type]interface{},
 	registeredForInterfaceSet map[reflect.Type]struct{}) error {
 
-	if reflect.TypeOf(v).Kind() != reflect.Ptr {
+	if reflect.TypeOf(v).Kind() != reflect.Ptr && reflect.TypeOf(v).Elem().Kind() != reflect.Interface {
 		return fmt.Errorf("interface: %s must be a pointer", reflect.TypeOf(v).Kind())
 	}
 	// 0. registeredMap 全局的map，用于记录已经初始化过的val
@@ -154,9 +154,9 @@ func (d *DefaultContainer) processInterface(v interface{},
 		if !ok {
 			continue
 		}
-		if field.Type.Kind() != reflect.Ptr {
-			return fmt.Errorf("interface: %s must be a pointer", field.Type.String())
-		}
+		//if field.Type.Kind() != reflect.Ptr {
+		//	return fmt.Errorf("interface: %s must be a pointer", field.Type.String())
+		//}
 		if !field.IsExported() {
 			return fmt.Errorf("interface: %s is not exported", field.Type.String())
 		}
@@ -186,6 +186,28 @@ func (d *DefaultContainer) processInterface(v interface{},
 			return err
 		}
 		// 1.5 从registeredMap中获取该值，然后赋值给字段
+		// 1.5.1 如果该字段是一个interface，并且该interface的实现类已经注册过，直接赋值给字段
+		if field.Type.Kind() == reflect.Interface {
+			// 尝试从interfaceMap中获取, interface 的 inject 必须有tag值
+			if impl, ok := d.interfaceMap[tag]; ok {
+				// 1.5.2 如果该字段是一个interface，并且该interface的实现类没有注册过，但是interfaceMap中有该实现类，直接赋值给字段
+				// 1.5.2.1 先判断一下该实现类是否已经注册过，如果已经注册过，直接赋值给字段
+				if r, ok := registeredMap[reflect.TypeOf(impl)]; ok {
+					reflect.ValueOf(v).Elem().Field(i).Set(reflect.ValueOf(r))
+				} else {
+					// 1.5.2.2 如果没有注册过，递归注入
+					err := d.processInterface(impl, registeredMap, registeredForInterfaceSet)
+					if err != nil {
+						return err
+					}
+					// 1.5.2.3 从registeredMap中获取该值，然后赋值给字段
+					reflect.ValueOf(v).Elem().Field(i).Set(reflect.ValueOf(impl))
+				}
+				continue
+			} else {
+				panic("interface not registered: " + tag)
+			}
+		}
 		vv.Elem().Field(i).Set(reflect.ValueOf(registeredMap[field.Type]))
 	}
 

@@ -416,4 +416,39 @@ func TestDefaultContainer_Initialize2(t *testing.T) {
 		assert.Equal(t, n, n2)
 		container.Clear()
 	})
+
+	t.Run("interface inject", func(t *testing.T) {
+		// 1. 注册组件
+		container.Register("home", &Home{})
+		container.Register("hospital", &Hospital{})
+		container.Register("work", &Work{})
+		container.Initialize()
+		w, _ := container.MustGet("work")
+		assert.Equal(t, "home", w.(*Work).HomePlace.Name())
+		assert.Equal(t, "hospital", w.(*Work).HospitalPlace.Name())
+		container.Clear()
+	})
+}
+
+type Place interface {
+	Name() string
+}
+
+type Home struct {
+}
+
+func (h *Home) Name() string {
+	return "home"
+}
+
+type Hospital struct {
+}
+
+func (h *Hospital) Name() string {
+	return "hospital"
+}
+
+type Work struct {
+	HomePlace     Place `inject:"home"`
+	HospitalPlace Place `inject:"hospital"`
 }
